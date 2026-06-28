@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NovaFlix — Streaming</title>
+<style>
+  :root{
+    --bg:#0b0b0f;
+    --bg-2:#14141c;
+    --card:#1a1a24;
+    --accent:#e50914;
+    --text:#f5f5f7;
+    --muted:#9a9aa5;
+    --radius:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI",system-ui,-apple-system,sans-serif}
+  body{background:var(--bg);color:var(--text);overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+
+  /* HEADER */
+  header{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;gap:24px;
+    padding:16px 40px;
+    background:linear-gradient(180deg,rgba(11,11,15,.95),rgba(11,11,15,.6));
+    backdrop-filter:blur(10px);
+  }
+  .logo{font-size:26px;font-weight:800;color:var(--accent);letter-spacing:-1px}
+  nav{display:flex;gap:20px;flex:1}
+  nav a{color:var(--muted);font-size:14px;transition:.2s}
+  nav a:hover,nav a.active{color:var(--text)}
+  .search{
+    display:flex;align-items:center;background:var(--bg-2);
+    border:1px solid #2a2a36;border-radius:30px;padding:8px 16px;width:240px;
+  }
+  .search input{background:none;border:none;outline:none;color:var(--text);width:100%;font-size:14px}
+  .search svg{width:16px;height:16px;fill:var(--muted)}
+
+  /* HERO */
+  .hero{
+    height:70vh;min-height:420px;position:relative;
+    display:flex;align-items:flex-end;padding:60px 40px;
+    background-size:cover;background-position:center;
+  }
+  .hero::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(0deg,var(--bg) 5%,transparent 60%),
+               linear-gradient(90deg,rgba(11,11,15,.8),transparent 70%);}
+  .hero-content{position:relative;z-index:2;max-width:560px}
+  .hero-tag{color:var(--accent);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase}
+  .hero h1{font-size:52px;margin:10px 0;line-height:1.05}
+  .hero p{color:#d0d0d8;font-size:16px;margin-bottom:24px;line-height:1.5}
+  .btns{display:flex;gap:14px}
+  .btn{
+    display:flex;align-items:center;gap:8px;border:none;cursor:pointer;
+    padding:13px 28px;border-radius:8px;font-size:15px;font-weight:600;transition:.2s;
+  }
+  .btn-play{background:var(--text);color:#000}
+  .btn-play:hover{background:#d0d0d8}
+  .btn-info{background:rgba(120,120,130,.5);color:var(--text)}
+  .btn-info:hover{background:rgba(120,120,130,.35)}
+  .btn svg{width:18px;height:18px}
+
+  /* ROWS */
+  .section{padding:30px 40px}
+  .section h2{font-size:22px;margin-bottom:16px}
+  .row{display:grid;grid-auto-flow:column;grid-auto-columns:200px;gap:14px;
+    overflow-x:auto;scroll-behavior:smooth;padding-bottom:10px}
+  .row::-webkit-scrollbar{height:8px}
+  .row::-webkit-scrollbar-thumb{background:#2a2a36;border-radius:10px}
+  .card{
+    background:var(--card);border-radius:var(--radius);overflow:hidden;
+    cursor:pointer;transition:transform .25s, box-shadow .25s;position:relative;
+  }
+  .card:hover{transform:scale(1.06);box-shadow:0 12px 30px rgba(0,0,0,.6);z-index:5}
+  .card img{width:100%;height:280px;object-fit:cover;display:block}
+  .card-info{padding:10px 12px}
+  .card-info h3{font-size:14px;font-weight:600}
+  .card-info span{font-size:12px;color:var(--muted)}
+  .badge{position:absolute;top:10px;left:10px;background:var(--accent);
+    font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px}
+
+  /* MODAL / PLAYER */
+  .modal{
+    position:fixed;inset:0;z-index:100;display:none;
+    align-items:center;justify-content:center;background:rgba(0,0,0,.85);
+    backdrop-filter:blur(6px);padding:20px;
+  }
+  .modal.open{display:flex}
+  .player-wrap{width:min(960px,100%);background:#000;border-radius:16px;overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.7)}
+  .video-area{position:relative;background:#000;aspect-ratio:16/9}
+  video{width:100%;height:100%;display:block;background:#000}
+
+  /* MINIMALIST CONTROLS */
+  .controls{
+    position:absolute;left:0;right:0;bottom:0;
+    padding:14px 18px;display:flex;flex-direction:column;gap:8px;
+    background:linear-gradient(0deg,rgba(0,0,0,.8),transparent);
+    opacity:0;transition:opacity .3s;
+  }
+  .video-area:hover .controls,.video-area.paused .controls{opacity:1}
+  .progress{height:4px;background:rgba(255,255,255,.25);border-radius:4px;cursor:pointer;position:relative}
+  .progress .filled{height:100%;width:0;background:var(--accent);border-radius:4px}
+  .ctrl-row{display:flex;align-items:center;gap:16px;color:#fff}
+  .ctrl-row button{background:none;border:none;color:#fff;cursor:pointer;display:flex;padding:0}
+  .ctrl-row svg{width:22px;height:22px;fill:#fff}
+  .time{font-size:13px;color:#ddd;font-variant-numeric:tabular-nums}
+  .spacer{flex:1}
+  .vol{width:80px;accent-color:var(--accent)}
+  .center-play{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .center-play svg{width:74px;height:74px;fill:rgba(255,255,255,.9);
+    filter:drop-shadow(0 2px 10px rgba(0,0,0,.6));transition:transform .2s}
+  .center-play:hover svg{transform:scale(1.1)}
+  .center-play.hidden{display:none}
+
+  .player-meta{padding:18px 22px;display:flex;justify-content:space-between;align-items:center}
+  .player-meta h3{font-size:18px}
+  .player-meta span{color:var(--muted);font-size:13px}
+  .close{background:none;border:none;color:var(--muted);font-size:26px;cursor:pointer}
+  .close:hover{color:#fff}
+
+  footer{padding:40px;text-align:center;color:var(--muted);font-size:13px;border-top:1px solid #1c1c26;margin-top:30px}
+
+  @media(max-width:680px){
+    header{padding:14px 20px;flex-wrap:wrap}
+    nav{order:3;width:100%}
+    .search{width:100%}
+    .hero{padding:40px 20px}
+    .hero h1{font-size:34px}
+    .section{padding:24px 20px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">NOVAFLIX</div>
+  <nav>
+    <a class="active" href="#">Início</a>
+    <a href="#filmes">Filmes</a>
+    <a href="#series">Séries</a>
+    <a href="#minha">Minha Lista</a>
+  </nav>
+  <div class="search">
+    <svg viewBox="0 0 24 24"><path d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="#9a9aa5" stroke-width="2" fill="none"/></svg>
+    <input id="searchInput" type="text" placeholder="Buscar títulos...">
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-content">
+    <span class="hero-tag">Em destaque</span>
+    <h1 id="heroTitle">A Jornada Estelar</h1>
+    <p id="heroDesc">Uma tripulação parte em busca de um novo lar entre as estrelas, enfrentando o desconhecido e a si mesma.</p>
+    <div class="btns">
+      <button class="btn btn-play" id="heroPlay">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Assistir
+      </button>
+      <button class="btn btn-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg> Mais informações
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ROWS -->
+<section class="section" id="filmes">
+  <h2>Filmes em Alta</h2>
+  <div class="row" id="rowFilmes"></div>
+</section>
+
+<section class="section" id="series">
+  <h2>Séries Populares</h2>
+  <div class="row" id="rowSeries"></div>
+</section>
+
+<section class="section" id="minha">
+  <h2>Continue Assistindo</h2>
+  <div class="row" id="rowMinha"></div>
+</section>
+
+<!-- MODAL PLAYER -->
+<div class="modal" id="modal">
+  <div class="player-wrap">
+    <div class="video-area" id="videoArea">
+      <video id="video" preload="metadata"></video>
+
+      <div class="center-play" id="centerPlay">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+
+      <div class="controls">
+        <div class="progress" id="progress"><div class="filled" id="filled"></div></div>
+        <div class="ctrl-row">
+          <button id="playBtn"><svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+          <button id="back10"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5v3a6 6 0 11-5.6 8.2l1.9-.7A4 4 0 1011 14v3z"/></svg></button>
+          <span class="time"><span id="cur">0:00</span> / <span id="dur">0:00</span></span>
+          <div class="spacer"></div>
+          <svg viewBox="0 0 24 24" style="width:20px;fill:#fff"><path d="M3 10v4h4l5 5V5L7 10H3zm13.5 2a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"/></svg>
+          <input class="vol" id="vol" type="range" min="0" max="1" step="0.05" value="1">
+          <button id="fsBtn"><svg viewBox="0 0 24 24"><path d="M4 4h6V2H2v8h2V4zm16 0v6h2V2h-8v2h6zM4 20v-6H2v8h8v-2H4zm16 0h-6v2h8v-8h-2v6z"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="player-meta">
+      <div>
+        <h3 id="pmTitle">Título</h3>
+        <span id="pmSub">2024 · 1h 48min · HD</span>
+      </div>
+      <button class="close" id="closeBtn">✕</button>
+    </div>
+  </div>
+</div>
+
+<footer>NOVAFLIX © 2026 — Demonstração de interface. Conteúdo de exemplo.</footer>
+
+<script>
+/* ====== CATÁLOGO DE EXEMPLO ====== */
+const SRC = {
+  bunny:"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+  elephant:"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+  blazes:"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+  escapes:"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+  fun:"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+  joy:"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
+};
+function poster(t,c){return `https://placehold.co/400x560/${c}/fff?text=${encodeURIComponent(t)}`;}
+
+const filmes = [
+  {t:"A Jornada Estelar",y:2024,g:"Ficção",d:"1h 48min",src:SRC.bunny,c:"1a1a24",badge:"4K"},
+  {t:"Sombras da Cidade",y:2023,g:"Suspense",d:"2h 05min",src:SRC.blazes,c:"2a1a2a"},
+  {t:"Horizonte Final",y:2025,g:"Aventura",d:"1h 59min",src:SRC.escapes,c:"1a2a2a",badge:"Novo"},
+  {t:"O Último Verão",y:2022,g:"Drama",d:"1h 37min",src:SRC.fun,c:"2a2a1a"},
+  {t:"Velocidade Máxima",y:2024,g:"Ação",d:"1h 52min",src:SRC.joy,c:"2a1a1a"},
+  {t:"Sonhos de Elefante",y:2023,g:"Animação",d:"1h 30min",src:SRC.elephant,c:"1a1a2a"}
+];
+const series = [
+  {t:"Códigos Ocultos",y:2025,g:"Série · 2 Temp.",d:"45min/ep",src:SRC.escapes,c:"22182e",badge:"T2"},
+  {t:"Fronteira Norte",y:2024,g:"Série · 1 Temp.",d:"50min/ep",src:SRC.blazes,c:"182e22"},
+  {t:"Laços de Sangue",y:2023,g:"Série · 3 Temp.",d:"42min/ep",src:SRC.fun,c:"2e1818"},
+  {t:"A Casa Vazia",y:2025,g:"Série · 1 Temp.",d:"55min/ep",src:SRC.bunny,c:"18222e",badge:"Novo"},
+  {t:"Tempo Quebrado",y:2022,g:"Série · 4 Temp.",d:"48min/ep",src:SRC.joy,c:"2e2218"},
+  {t:"Vozes do Mar",y:2024,g:"Série · 2 Temp.",d:"40min/ep",src:SRC.elephant,c:"1e1e2e"}
+];
+const minha = [...filmes.slice(2),...series.slice(0,3)];
+
+/* ====== RENDER ====== */
+function makeCard(item){
+  const el=document.createElement('div');
+  el.className='card';
+  el.innerHTML=`
+    ${item.badge?`<span class="badge">${item.badge}</span>`:''}
+    <img src="${poster(item.t,item.c)}" alt="${item.t}">
+    <div class="card-info"><h3>${item.t}</h3><span>${item.y} · ${item.g}</span></div>`;
+  el.onclick=()=>openPlayer(item);
+  return el;
+}
+function fill(id,list){const r=document.getElementById(id);r.innerHTML='';list.forEach(i=>r.appendChild(makeCard(i)));}
+fill('rowFilmes',filmes);fill('rowSeries',series);fill('rowMinha',minha);
+
+/* ====== HERO ====== */
+document.getElementById('hero').style.backgroundImage=`url(https://placehold.co/1600x900/0d0d14/222?text=NOVAFLIX)`;
+document.getElementById('heroPlay').onclick=()=>openPlayer(filmes[0]);
+
+/* ====== PLAYER ====== */
+const modal=document.getElementById('modal');
+const video=document.getElementById('video');
+const videoArea=document.getElementById('videoArea');
+const playBtn=document.getElementById('playBtn');
+const playIcon=document.getElementById('playIcon');
+const centerPlay=document.getElementById('centerPlay');
+const filled=document.getElementById('filled');
+const progress=document.getElementById('progress');
+const curEl=document.getElementById('cur');
+const durEl=document.getElementById('dur');
+const PLAY='M8 5v14l11-7z';
+const PAUSE='M6 5h4v14H6zM14 5h4v14h-4z';
+
+function fmt(s){if(isNaN(s))return'0:00';const m=Math.floor(s/60),x=Math.floor(s%60);return m+':'+(x<10?'0':'')+x;}
+
+function openPlayer(item){
+  video.src=item.src;
+  document.getElementById('pmTitle').textContent=item.t;
+  document.getElementById('pmSub').textContent=`${item.y} · ${item.d} · ${item.g}`;
+  modal.classList.add('open');
+  video.play().catch(()=>{});
+}
+function closePlayer(){modal.classList.remove('open');video.pause();video.src='';}
+document.getElementById('closeBtn').onclick=closePlayer;
+modal.onclick=e=>{if(e.target===modal)closePlayer();};
+
+function toggle(){video.paused?video.play():video.pause();}
+playBtn.onclick=toggle;
+centerPlay.onclick=toggle;
+video.onclick=toggle;
+
+video.onplay=()=>{playIcon.setAttribute('d',PAUSE);centerPlay.classList.add('hidden');videoArea.classList.remove('paused');};
+video.onpause=()=>{playIcon.setAttribute('d',PLAY);centerPlay.classList.remove('hidden');videoArea.classList.add('paused');};
+video.onloadedmetadata=()=>durEl.textContent=fmt(video.duration);
+video.ontimeupdate=()=>{
+  filled.style.width=(video.currentTime/video.duration*100)+'%';
+  curEl.textContent=fmt(video.currentTime);
+};
+
+progress.onclick=e=>{const r=progress.getBoundingClientRect();video.currentTime=((e.clientX-r.left)/r.width)*video.duration;};
+document.getElementById('back10').onclick=()=>video.currentTime-=10;
+document.getElementById('vol').oninput=e=>video.volume=e.target.value;
+document.getElementById('fsBtn').onclick=()=>{videoArea.requestFullscreen?videoArea.requestFullscreen():null;};
+
+/* atalhos de teclado */
+document.addEventListener('keydown',e=>{
+  if(!modal.classList.contains('open'))return;
+  if(e.code==='Space'){e.preventDefault();toggle();}
+  if(e.code==='Escape')closePlayer();
+  if(e.code==='ArrowRight')video.currentTime+=10;
+  if(e.code==='ArrowLeft')video.currentTime-=10;
+});
+
+/* ====== BUSCA ====== */
+document.getElementById('searchInput').oninput=e=>{
+  const q=e.target.value.toLowerCase().trim();
+  const f=t=>!q||t.t.toLowerCase().includes(q);
+  fill('rowFilmes',filmes.filter(f));
+  fill('rowSeries',series.filter(f));
+  fill('rowMinha',minha.filter(f));
+};
+</script>
+</body>
+</html>
